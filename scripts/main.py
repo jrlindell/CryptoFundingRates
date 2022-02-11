@@ -41,10 +41,11 @@ def BTCpricebins(BTCpricedata, BTCdata):
     pricedates = [[] for x in range(5)]
     for i in range(0, len(BTCpricedata)):
         a = [BTCpricedata.iloc[i]['Date'] in list for list in bindates] # see what bins this date is in
-        idx = [i for i, x in enumerate(a) if x][0]
+        idx = [i for i, x in enumerate(a) if x]
         if idx == []:# get the index of the bin the date is in
             pass
         else:
+            idx = idx[0]
             pricedates[idx].append([BTCpricedata.iloc[i]['low'], BTCpricedata.iloc[i]['high'], BTCpricedata.iloc[i]['volume']])
             z = 2
 
