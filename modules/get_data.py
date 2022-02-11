@@ -10,36 +10,63 @@
 
 
 
+# https://stackoverflow.com/questions/65128879/how-to-bypass-being-rate-limited-html-error-1015-using-python
+
+
 # PACKAGES
+import time
+
 import numpy as np
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import Historic_Crypto
+from selenium import webdriver
 import matplotlib.pyplot as plt
+import re
+
+from webdriver_manager.firefox import GeckoDriverManager
 
 # need to grab the tables from bitmex to start
-def bitmex_data():
+def bitmex_data(): #wanted to try and get the data w/o using APIs
     url_base = 'https://www.bitmex.com/app/fundingHistory?start='
     # the number changes by 100 for each page
     page = 0
-    table_headers = []
+    total_data = []
     while True:
         url = url_base + str(page)
-        bitmex = requests.get(url)
-        html = bitmex.text
-        soup = BeautifulSoup(html)
-        data = soup.find_all('table')[0].find('tr')
-        tbl = soup.find('tbody')
+        driver = webdriver.Firefox(executable_path=GeckoDriverManager().install())
+        driver.get(url)
+        text_area = driver.find_element_by_xpath('//*[@id="filter"]')
+        text_area.send_keys('{"symbol":"XBTUSD"}')
+        button = driver.find_element_by_xpath('/html/body/div[2]/div/span/div[2]/div/div/section/div/div/div/form/fieldset/div/div/div[2]/button[2]')
+        button.click()
+        time.sleep(5)
+        jb = driver.find_element_by_xpath("/html/body/div[2]/div/span/div[2]/div/div/section/div/div/div/div[2]/div[2]/div[2]/table/tbody")
+        time.sleep(3)
+        a = jb.text
+        if a == 'No data.':
+            break
+        list = a.splitlines()
+
+        array = []
+        for i in list:
+            newlist = re.split(' AM | PM | every 8 hours |\%', i)[0:4]
+            array.append(newlist)
+        page += 100
+        total_data.extend(array)
+        driver.close()
+    pd.DataFrame(total_data).to_csv('../data/BitmexBTC.csv')
+
 
 def binance_data():
-    BTCdata = pd.read_csv('/Users/footb/Downloads/Funding Rate History_BTCUSD Perpetual_2022-02-10.csv')
+    BTCdata = pd.read_csv('../data/Funding Rate History_BTCUSDT Perpetual_2022-02-11.csv')
     BTCdata['Date'] = pd.to_datetime(BTCdata['Time']).dt.date
     BTCdata['Time'] = pd.to_datetime(BTCdata['Time']).dt.time
     BTCdata['Funding Rate'] = (BTCdata['Funding Rate'].str.rstrip('%').astype('float') / 100.0)
     #BTCdata['Funding Rate'] = float(BTCdata['Funding Rate'].apply(lambda x: '%.8f' % x))
     BTCdata = BTCdata[['Date', 'Time', 'Funding Interval', 'Funding Rate']]
-    ETHdata = pd.read_csv('/Users/footb/Downloads/Funding Rate History_ETHUSD Perpetual_2022-02-10.csv')
+    ETHdata = pd.read_csv('../data/Funding Rate History_ETHUSDT Perpetual_2022-02-11.csv')
     return BTCdata, ETHdata
 
 
