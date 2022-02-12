@@ -15,7 +15,7 @@ def find_max(data_full, timeframe):
         set = data[(bottom):(top)]
         m = max(set)
         if data[i] == m:
-            list.append((m, str(data_full.iloc[i]['Date'].strftime('%m/%d/%Y'))))
+            list.append((m, data_full.iloc[i]['Date']))
             m = 0
         else:
             pass
@@ -37,7 +37,7 @@ def find_min(data_full, timeframe):
         set = data[(bottom):(top)]
         m = min(set)
         if data[i] == m: # want date
-            list.append((m, str(data_full.iloc[i]['Date'].strftime('%m/%d/%Y'))))
+            list.append((m, data_full.iloc[i]['Date']))
             m = 0
         else:
             pass

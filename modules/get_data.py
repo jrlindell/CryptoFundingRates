@@ -25,7 +25,7 @@ from selenium import webdriver
 import matplotlib.pyplot as plt
 import re
 
-from webdriver_manager.firefox import GeckoDriverManager
+from webdriver_manager.chrome import ChromeDriverManager
 
 # need to grab the tables from bitmex to start
 def bitmex_data(): #wanted to try and get the data w/o using APIs
@@ -35,7 +35,7 @@ def bitmex_data(): #wanted to try and get the data w/o using APIs
     total_data = []
     while True:
         url = url_base + str(page)
-        driver = webdriver.Firefox(executable_path=GeckoDriverManager().install())
+        driver = webdriver.Chrome(executable_path=ChromeDriverManager().install())
         driver.get(url)
         text_area = driver.find_element_by_xpath('//*[@id="filter"]')
         text_area.send_keys('{"symbol":"XBTUSD"}')
@@ -56,7 +56,8 @@ def bitmex_data(): #wanted to try and get the data w/o using APIs
         page += 100
         total_data.extend(array)
         driver.close()
-    pd.DataFrame(total_data).to_csv('../data/BitmexBTC.csv')
+    pd.DataFrame(total_data).to_csv('data/BitmexBTC2.csv')
+
 
 
 def binance_data():

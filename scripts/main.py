@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
 import seaborn as sns
-from datetime import datetime
+from datetime import datetime, date
 
 from modules import get_data, tops_bottoms
+from modules.tops_bottoms import BTCTopsandBottoms
 
 # this finds the market cycle tops and dates for larger time frames (500+ days),
 # medium time frames (200 days) and small time frames (50 days)
@@ -56,7 +57,7 @@ def BTCpricebins(BTCpricedata, BTCdata):
     # want toget the price at each date in each bin
         # get 14 day lookahead price
 
-    pricedates = [[] for x in range(5)]
+    pricedates = []
     for i in range(0, len(BTCpricedata)):
         a = [BTCpricedata.iloc[i]['Date'] in list for list in bindates] # see what bins this date is in
         idx = [i for i, x in enumerate(a) if x]
@@ -67,20 +68,80 @@ def BTCpricebins(BTCpricedata, BTCdata):
             pricedates[idx].append([BTCpricedata.iloc[i]['Date'],BTCpricedata.iloc[i]['low'], BTCpricedata.iloc[i]['high'], BTCpricedata.iloc[i]['volume']])
     return pricedates, bindates
 
+
+def merge_rates_price(BTCpricedata, BTCdata):
+    # forgot about being able to merge datasets (duh), so the BTCpricebins and fundingbins functions are deprecated
+
+    BTCdata = BTCdata.groupby('Date').mean('Funding Rate')
+    BTCdata.reset_index(inplace=True)
+    BTCdata['bin'] = pd.qcut(BTCdata['Funding Rate'], 5, precision=5, duplicates='drop', labels=False)
+    BTCdata['bin'].value_counts()  # not even, but hard with such low numbers
+    data_join = BTCpricedata.merge(BTCdata, how='left', on='Date')
+    data_join = data_join[['Date', 'low', 'high', 'open', 'close', 'volume', 'Funding Rate', 'bin']]
+    return data_join
+
+
 # want to take the prices and funding rates of each date and see where price was 7, 14, 28, 90, 180, 365 days into the future
-
 def bincompare(BTCpricedata, BTCdata):
-    pricedates, bindates = BTCpricebins(BTCpricedata, BTCdata)
+    data = merge_rates_price(BTCpricedata, BTCdata)
 
-    bin1, bin2, bin3, bin4, bin5 = [], [], [], [], [] # for simplicity I am creating multiple lists for the data, but would have normall
-    for i in pricedates:
-        i[0], i[1], i[2], i[3] = date, low, high, vol
-        change = []
-        fut = pd.to_datetime(i[0]) + pd.DateOffset(days=7) # get the day in the future we want
-        fut_info = BTCpricedata.loc[BTCpricedata['Date'] == fut] # get info for that day
-        fut_high = fut_info.iloc[0][2]
-        price_chg = ((i[2] - fut_high) / i[2]) * 100
+    changes = []
+    for i in range(0, len(data)):
+        dict, future_chg, future_dates = {}, [], []
+            # date, high, low, vol, funding rate, bin, future date, %chg ...
+        future_dates = [pd.to_datetime(data.iloc[i][0]) + pd.DateOffset(days=7), pd.to_datetime(data.iloc[i][0]) + pd.DateOffset(days=14),
+                            pd.to_datetime(data.iloc[i][0]) + pd.DateOffset(days=28), pd.to_datetime(data.iloc[i][0]) + pd.DateOffset(days=90),
+                            pd.to_datetime(data.iloc[i][0]) + pd.DateOffset(days=180), pd.to_datetime(data.iloc[i][0]) + pd.DateOffset(days=365)]
+        for f in future_dates:
+            if f > date.today():
+                f = date.today()
+            fut_high = BTCpricedata.loc[BTCpricedata['Date'] == f].iloc[0][2]
+            future_chg.append(((data.iloc[i][2] - fut_high) / data.iloc[i][2]) * 100)
+        dict.update({
+            'Date': data.iloc[i][0],
+            'high': data.iloc[i][2],
+            'low': data.iloc[i][1],
+            'vol': data.iloc[i][5],
+            'rate': data.iloc[i][6],
+            'rate bin': data.iloc[i][7],
+            'future_date': future_dates,
+            'future_price': future_chg
+        })
+        changes.append(dict)
+
+    return changes
+
+
+def rate_atpeaks(BTCpricedata, BTCdata):
+    """
+    try and figure out what the funding rate is at the peaks, at the bottoms, is it the only time it gets there?
+    :param BTCpricedata:
+    :param BTCdata:
+    :return:
+    """
+    marketmax, midmax, smallmax, marketmin, midmin, smallmin = BTCTopsandBottoms(BTCpricedata)
+    bindates = fundingbins(BTCdata)
+
+    m_max = []
+    for i in marketmax:
+        idx = BTCdata.index[BTCdata['Date'] == marketmax[i][1]].tolist()
+        rates = BTCdata.loc[idx]['Funding Rate']
+        m_max.append(rates)
+        # are there any other times it was this funding rate?
+
+
+    mid_max = []
+    for i in midmax:
+        idx = BTCdata.index[BTCdata['Date'] == midmax[i][1]].tolist()
+        rates = BTCdata.loc[idx]['Funding Rate']
+        mid_max.append(rates)
+    sm_max = []
+    for i in smallmax:
+        idx = BTCdata.index[BTCdata['Date'] == smallmax[i][1]].tolist()
+        rates = BTCdata.loc[idx]['Funding Rate']
+        sm_max.append(rates)
+
 
     z = 2
 
-bincompare(BTCpricedata, BTCdata)
+rate_atpeaks(BTCpricedata, BTCdata)
