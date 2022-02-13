@@ -80,6 +80,16 @@ def merge_rates_price(BTCpricedata, BTCdata):
     data_join = data_join[['Date', 'low', 'high', 'open', 'close', 'volume', 'Funding Rate', 'bin']]
     return data_join
 
+def binsummary():
+    data = merge_rates_price(BTCpricedata, BTCdata)
+    # get max, min, quartiles, count for each bin
+    df = pd.DataFrame()
+    for i in np.unique(data['bin']):
+        a = data[data['bin'] == i]
+        min, max, vol = a['low'].min(), a['high'].max(), a['volume'].mean()
+        a['avg'] = a[['high', 'low', 'open', 'close']].mean(axis=1)
+        df[str(i)] = a['avg'].describe()
+    return df[['0.0', '1.0', '2.0', '3.0']]
 
 # want to take the prices and funding rates of each date and see where price was 7, 14, 28, 90, 180, 365 days into the future
 def bincompare(BTCpricedata, BTCdata):
@@ -111,37 +121,85 @@ def bincompare(BTCpricedata, BTCdata):
 
     return changes
 
-
 def rate_atpeaks(BTCpricedata, BTCdata):
     """
     try and figure out what the funding rate is at the peaks, at the bottoms, is it the only time it gets there?
     :param BTCpricedata:
     :param BTCdata:
     :return:
+    :takeaways: this showed that the funding rate itself does not have any correlation to peaks, but might to valleys
+        (if funding rate <= 0 then...
     """
+
+    data = merge_rates_price(BTCpricedata, BTCdata)
     marketmax, midmax, smallmax, marketmin, midmin, smallmin = BTCTopsandBottoms(BTCpricedata)
-    bindates = fundingbins(BTCdata)
 
-    m_max = []
+    other_marketmax, other_midmax, other_smallmax = [], [], []
     for i in marketmax:
-        idx = BTCdata.index[BTCdata['Date'] == marketmax[i][1]].tolist()
-        rates = BTCdata.loc[idx]['Funding Rate']
-        m_max.append(rates)
-        # are there any other times it was this funding rate?
-
-
-    mid_max = []
+        # get rate
+        # are there any other dates with this rate
+        # % of tops market tops at this rate
+        rate = data[data['Date'] == i[1]]['Funding Rate'].values[0]
+        rate_range = [rate - 0.00005, rate + 0.00005]
+        #others = data[data['Funding Rate'] == rate]
+        other_marketmax.append([i[1], data[data['Funding Rate'].between(rate_range[0], rate_range[1], inclusive=False)]['Date'].values.tolist()])
     for i in midmax:
-        idx = BTCdata.index[BTCdata['Date'] == midmax[i][1]].tolist()
-        rates = BTCdata.loc[idx]['Funding Rate']
-        mid_max.append(rates)
-    sm_max = []
+        # get rate
+        # are there any other dates with this rate
+        # % of tops market tops at this rate
+        rate = data[data['Date'] == i[1]]['Funding Rate'].values[0]
+        rate_range = [rate - 0.00005, rate + 0.00005]
+        # others = data[data['Funding Rate'] == rate]
+        other_midmax.append([i[1], data[data['Funding Rate'].between(rate_range[0], rate_range[1], inclusive=False)]['Date'].values.tolist()])
     for i in smallmax:
-        idx = BTCdata.index[BTCdata['Date'] == smallmax[i][1]].tolist()
-        rates = BTCdata.loc[idx]['Funding Rate']
-        sm_max.append(rates)
+        # get rate
+        # are there any other dates with this rate
+        # % of tops market tops at this rate
+        rate = data[data['Date'] == i[1]]['Funding Rate'].values[0]
+        rate_range = [rate - 0.00005, rate + 0.00005]
+        # others = data[data['Funding Rate'] == rate]
+        other_smallmax.append([i[1], data[data['Funding Rate'].between(rate_range[0], rate_range[1], inclusive=False)]['Date'].values.tolist()])
+    return other_marketmax, other_midmax, other_smallmax
 
 
-    z = 2
 
-rate_atpeaks(BTCpricedata, BTCdata)
+def likelihood_of_peak(BTCpricedata, BTCdata):
+    '''
+    find the likelihood of there being a peak given a funding rate
+        what about in 7 day groups?
+        does one on macro signal micro?
+    :param BTCpricedata:
+    :param BTCdata:
+    :return:
+    '''
+    marketmax, midmax, smallmax = rate_atpeaks(BTCpricedata, BTCdata)
+    max_lh = []
+    for i in marketmax:
+        count = len(marketmax[i][1])
+        max_lh.append([marketmax[i][0], 1/count])
+    mid_lh = []
+    for i in midmax:
+        count = len(midmax[i][1])
+        mid_lh.append([midmax[i][0], 1 / count])
+    small_lh = []
+    for i in smallmax:
+        count = len(smallmax[i][1])
+        mid_lh.append([smallmax[i][0], 1 / count])
+
+def changes(BTCpricedata, BTCdata):
+    # see relation between price, funding rate, and future prices
+        # split into bins and see if the bin predicts a downturn? up turn? likelihood of going up x?
+    changes = bincompare(BTCpricedata, BTCdata)
+    data = pd.DataFrame(changes)
+    data[['7days', '14days', '28days', '90days', '180days', '365days']] = pd.DataFrame(data.future_date.to_list(), index = data.index)
+    data[['7days%', '14days%', '28days%', '90days%', '180days%', '365days%']] = pd.DataFrame(data.future_price.to_list(), index = data.index)
+    data = data.drop(['future_date', 'future_price'], axis=1)
+
+    bin7 = data.groupby('rate bin', dropna=True)['7days%'].mean()
+    bin14 = data.groupby('rate bin', dropna=True)['14days%'].mean()
+    bin28 = data.groupby('rate bin', dropna=True)['28days%'].mean()
+    bin90 = data.groupby('rate bin', dropna=True)['90days%'].mean()
+    bin180 = data.groupby('rate bin', dropna=True)['180days%'].mean()
+    bin365 = data.groupby('rate bin', dropna=True)['365days%'].mean()
+
+changes(BTCpricedata, BTCdata)
