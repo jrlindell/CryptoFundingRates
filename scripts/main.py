@@ -202,4 +202,40 @@ def changes(BTCpricedata, BTCdata):
     bin180 = data.groupby('rate bin', dropna=True)['180days%'].mean()
     bin365 = data.groupby('rate bin', dropna=True)['365days%'].mean()
 
-changes(BTCpricedata, BTCdata)
+
+def fr_change(BTCpricedata, BTCdata):
+    # by looking at some of the chanrts it tooks like even if the funding rate doesnt have a threshold, it may have a rate of change that could be concerning
+    data = merge_rates_price(BTCpricedata, BTCdata)
+    data['FR1day'] = (data['Funding Rate'].diff()) # diff between yesterday and today
+    data['FR5day'] = data['Funding Rate'].diff(periods=5) # diff b/w 5 days ago and today
+    data['FR5day%'] = data['FR5day'] / data['Funding Rate'] # % difference
+    ## lets do the same for price to see if they are correlated
+    data['Price1day'] = (data['high'].diff())  # diff between yesterday and today
+    data['Price5day'] = data['high'].diff(periods=5)  # diff b/w 5 days ago and today
+    data['Price5day%'] = data['Price5day'] / data['high']  # % difference
+
+
+
+    # check against tops and bottoms
+    marketmax, midmax, smallmax, marketmin, midmin, smallmin = BTCTopsandBottoms(BTCpricedata)
+
+    # new col: tops and bottoms
+        # marketmax = 3, midmax = 2, smallmax = 1, then oppo for mins
+    data['TB'] = ''
+    data.loc[data[data['Date'].isin(smallmax)].index.values, 'TB'] = 1
+    data.loc[data[data['Date'].isin(midmax)].index.values, 'TB'] = 2
+    data.loc[data[data['Date'].isin(marketmax)].index.values, 'TB'] = 3
+    data.loc[data[data['Date'].isin(smallmin)].index.values, 'TB'] = -1
+    data.loc[data[data['Date'].isin(midmin)].index.values, 'TB'] = -2
+    data.loc[data[data['Date'].isin(marketmin)].index.values, 'TB'] = -3
+
+    for j in range(-3,3, 1):
+        for i in range(0, len(data[data['TB'] == j].index.values)):
+            data.iloc[data[data['TB'] == 3].index.values[0] - 3: data[data['TB'] == 3].index.values[0]]
+
+
+    z = 2
+        # now i have the column, i can check the price% or fr % before max to see if there is any correlation
+            # bin fr% change, price % change?
+
+fr_change(BTCpricedata, BTCdata)

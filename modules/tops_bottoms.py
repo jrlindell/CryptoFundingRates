@@ -15,7 +15,7 @@ def find_max(data_full, timeframe):
         set = data[(bottom):(top)]
         m = max(set)
         if data[i] == m:
-            list.append((m, data_full.iloc[i]['Date']))
+            list.append(data_full.iloc[i]['Date'])
             m = 0
         else:
             pass
@@ -24,7 +24,8 @@ def find_max(data_full, timeframe):
 def find_min(data_full, timeframe):
     tf = timeframe
     data = data_full['high'].tolist()
-    mins, loc = [], []
+    maxes, loc = [], []
+    list = []
     for i in range(0, len(data)):
         if i - tf < 0:
             bottom = 0
@@ -36,8 +37,8 @@ def find_min(data_full, timeframe):
             top = i + tf
         set = data[(bottom):(top)]
         m = min(set)
-        if data[i] == m: # want date
-            list.append((m, data_full.iloc[i]['Date']))
+        if data[i] == m:
+            list.append(data_full.iloc[i]['Date'])
             m = 0
         else:
             pass
@@ -54,8 +55,8 @@ def BTCTopsandBottoms(data):
     marketmax = find_max(BTC_price_data, marketTF)
     midmax = find_max(BTC_price_data, midTF)
     smallmax = find_max(BTC_price_data, smallTF)
-    marketmin = find_max(BTC_price_data, marketTF)
-    midmin = find_max(BTC_price_data, midTF)
-    smallmin = find_max(BTC_price_data, smallTF)
+    marketmin = find_min(BTC_price_data, marketTF)
+    midmin = find_min(BTC_price_data, midTF)
+    smallmin = find_min(BTC_price_data, smallTF)
 
     return marketmax, midmax, smallmax, marketmin, midmin, smallmin
