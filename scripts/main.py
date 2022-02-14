@@ -13,7 +13,8 @@ BTCpricedata, _ = get_data.Price_data()
 
 
 # bin funding rates, and then % drop/gain after
-BTCdata, ETHdata = get_data.binance_data()
+#BTCdata, ETHdata = get_data.binance_data()
+BTCdata = pd.read_csv('/Users/footb/Desktop/Misc/Finance/Crypto/CarterProject/data/BitmexBTC2.csv')
 
 
 
@@ -229,13 +230,13 @@ def fr_change(BTCpricedata, BTCdata):
     data.loc[data[data['Date'].isin(midmin)].index.values, 'TB'] = -2
     data.loc[data[data['Date'].isin(marketmin)].index.values, 'TB'] = -3
 
-    for j in range(-3,3, 1):
-        for i in range(0, len(data[data['TB'] == j].index.values)):
-            data.iloc[data[data['TB'] == 3].index.values[0] - 3: data[data['TB'] == 3].index.values[0]]
+    min_max = data.loc[data['TB'].isin([-3, -2, -1, 1, 2, 3])]
 
+    # bin price 5day%, fr5day%
+    data['FR_chg_bin'] = pd.qcut(data['FR5day%'], 5, precision=5, duplicates='drop', labels=False)
+    data['Price_chg_bin'] = pd.qcut(data['Price5day%'], 5, precision=5, duplicates='drop', labels=False)
 
-    z = 2
-        # now i have the column, i can check the price% or fr % before max to see if there is any correlation
-            # bin fr% change, price % change?
+    data.dropna().groupby(['TB', 'FR_chg_bin']).size() # group by TB and FR chg bin and see the overlaps
+    data.dropna().groupby(['TB', 'Price_chg_bin']).size() # group by price
+    data.dropna().groupby(['TB', 'Price_chg_bin', 'FR_chg_bin']).size() # all
 
-fr_change(BTCpricedata, BTCdata)

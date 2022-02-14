@@ -8,11 +8,6 @@
 #If higher funding leads to an increase in volatility, or a lower increase. If so, how correlated is it?
 #It’s flexible, the thing is for you to show your knowledge so I’ll let you have range to explore.
 
-
-
-# https://stackoverflow.com/questions/65128879/how-to-bypass-being-rate-limited-html-error-1015-using-python
-
-
 # PACKAGES
 import time
 
@@ -58,17 +53,33 @@ def bitmex_data(): #wanted to try and get the data w/o using APIs
         driver.close()
     pd.DataFrame(total_data).to_csv('data/BitmexBTC2.csv')
 
-
+def Bitmex2():
+    BTCdata = pd.read_csv('/Users/footb/Desktop/Misc/Finance/Crypto/CarterProject/data/BitmexBTC2.csv')
+    BTCdata['Date'] = pd.to_datetime(BTCdata['Time']).dt.date
+    BTCdata = BTCdata[['Date', 'Funding Rate']]
+    return BTCdata
 
 def binance_data():
-    BTCdata = pd.read_csv('../data/Funding Rate History_BTCUSDT Perpetual_2022-02-11.csv')
+    BTCdata = pd.read_csv('/Users/footb/Desktop/Misc/Finance/Crypto/CarterProject/data/Funding Rate History_BTCUSDT Perpetual_2022-02-11.csv')
     BTCdata['Date'] = pd.to_datetime(BTCdata['Time']).dt.date
     BTCdata['Time'] = pd.to_datetime(BTCdata['Time']).dt.time
     BTCdata['Funding Rate'] = (BTCdata['Funding Rate'].str.rstrip('%').astype('float') / 100.0)
     #BTCdata['Funding Rate'] = float(BTCdata['Funding Rate'].apply(lambda x: '%.8f' % x))
     BTCdata = BTCdata[['Date', 'Time', 'Funding Interval', 'Funding Rate']]
-    ETHdata = pd.read_csv('../data/Funding Rate History_ETHUSDT Perpetual_2022-02-11.csv')
-    return BTCdata, ETHdata
+    return BTCdata
+
+def FR_data():
+    bitmex = Bitmex2()
+    binance = binance_data()
+    binance = binance[['Date', 'Funding Rate']]
+    bitmex = bitmex.groupby('Date').mean()
+    bitmex.reset_index(inplace=True)
+    binance = binance.groupby('Date').mean()
+    binance.reset_index(inplace=True)
+    z = 2
+
+    # concatenate dataframes to be average of fr for each dat
+FR_data()
 
 
 def Price_data():
