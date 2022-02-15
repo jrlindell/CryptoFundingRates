@@ -76,19 +76,28 @@ def FR_data():
     bitmex.reset_index(inplace=True)
     binance = binance.groupby('Date').mean()
     binance.reset_index(inplace=True)
-    z = 2
+    data = []
+    for i in range(0, len(bitmex)):
+        date = bitmex.iloc[i]['Date']
+        binfr = binance[binance['Date'] == date]['Funding Rate'].values.tolist()
+        if binfr == []:
+            fr = bitmex.iloc[i]['Funding Rate']
+        else:
+            fr = (bitmex.iloc[i]['Funding Rate'] + binfr) / 2
+        data.append([date, fr])
+    data = pd.DataFrame(data)
+    data.columns = ['Date', 'Funding Rate']
 
-    # concatenate dataframes to be average of fr for each dat
-FR_data()
-
+    return data
 
 def Price_data():
-    BTC_pricedata = Historic_Crypto.HistoricalData('BTC-USD', 86400, '2018-01-01-00-00').retrieve_data()
+    fr = FR_data()
+    BTC_pricedata = Historic_Crypto.HistoricalData('BTC-USD', 86400, '2016-05-14-00-00').retrieve_data()
     BTC_pricedata.index.name = 'Date'
     BTC_pricedata.reset_index(inplace=True)
     BTC_pricedata['Date'] = pd.to_datetime(BTC_pricedata['Date']).dt.date
     BTC_pricedata = BTC_pricedata[['Date', 'low', 'high', 'open', 'close', 'volume']]
-    ETH_pricedata = Historic_Crypto.HistoricalData('ETH-USD', 86400, '2018-01-01-00-00').retrieve_data()
+    ETH_pricedata = Historic_Crypto.HistoricalData('ETH-USD', 86400, '2016-05-14-00-00').retrieve_data()
     ETH_pricedata.index.name = 'Date'
     ETH_pricedata.reset_index(inplace=True)
     ETH_pricedata['Date'] = pd.to_datetime(ETH_pricedata['Date']).dt.date
