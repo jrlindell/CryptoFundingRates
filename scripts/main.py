@@ -9,13 +9,14 @@ from modules.tops_bottoms import BTCTopsandBottoms
 # this finds the market cycle tops and dates for larger time frames (500+ days),
 # medium time frames (200 days) and small time frames (50 days)
 BTCpricedata, _ = get_data.Price_data()
+BTCpricedata = BTCpricedata[1326:]
 #marketmax, midmax, smallmax, marketmin, midmin, smallmin = tops_bottoms.BTCTopsandBottoms(BTCpricedata)
 
 
 # bin funding rates, and then % drop/gain after
 #BTCdata, ETHdata = get_data.binance_data()
 BTCdata = get_data.FR_data()
-
+BTCdata = BTCdata[1327:]
 
 
 
@@ -82,6 +83,8 @@ def merge_rates_price(BTCpricedata, BTCdata):
     data_join['FRbin'].value_counts()  # not even, but hard with such low numbers
     return data_join
 
+merge_rates_price(BTCpricedata, BTCdata)
+
 def binsummary(): # done
     data = merge_rates_price(BTCpricedata, BTCdata)
     # get max, min, quartiles, count for each bin
@@ -91,7 +94,10 @@ def binsummary(): # done
         min, max, vol = a['low'].min(), a['high'].max(), a['volume'].mean()
         a['avg'] = a[['high', 'low', 'open', 'close']].mean(axis=1)
         df[str(i)] = a['avg'].describe()
+        df = df.round(2)
     return df[['0.0', '1.0', '2.0', '3.0']]
+
+
 
 
 # want to take the prices and funding rates of each date and see where price was 7, 14, 28, 90, 180, 365 days into the future
@@ -122,9 +128,18 @@ def bincompare(BTCpricedata, BTCdata):
         })
         changes.append(dict)
 
+    changes = pd.DataFrame(changes)
+    changes = changes[['Date', 'high', 'low', 'vol', 'rate', 'rate bin', 'future_price']]
+    changes = changes[:2101]
+    b = changes[['Date', 'future_price']]
+    c = b['future_price'].astype("string").str.split(',', expand=True)
+    c.columns = ['7day', '14day', '28day', '90day', '180day', '365day']
+    c['Date'] = b['Date']
+    c['7day'] = c['7day'].map(lambda x: x.lstrip('['))
+    c['365day'] = c['365day'].map(lambda x: x.rstrip(']'))
+    changes = changes.merge(c, on='Date')
+
     return changes
-
-
 
 def rate_atpeaks(BTCpricedata, BTCdata): # done
     """
@@ -145,9 +160,10 @@ def rate_atpeaks(BTCpricedata, BTCdata): # done
         # are there any other dates with this rate
         # % of tops market tops at this rate
         rate = data[data['Date'] == i]['Funding Rate'].values[0]
-        rate_range = [rate - 0.0001, rate + 0.0001]
+        rate_range = [rate - 0.0005, rate + 0.0005]
         #others = data[data['Funding Rate'] == rate]
         other_marketmax.append([i, data[data['Funding Rate'].between(rate_range[0], rate_range[1], inclusive=False)]['Date'].values.tolist()])
+
     for i in midmax:
         # get rate
         # are there any other dates with this rate
@@ -165,6 +181,7 @@ def rate_atpeaks(BTCpricedata, BTCdata): # done
         # others = data[data['Funding Rate'] == rate]
         other_smallmax.append([i, data[data['Funding Rate'].between(rate_range[0], rate_range[1], inclusive=False)]['Date'].values.tolist()])
     return other_marketmax, other_midmax, other_smallmax
+
 
 def likelihood_of_peak(BTCpricedata, BTCdata):
     '''
@@ -211,17 +228,20 @@ def fr_change(BTCpricedata, BTCdata): # done
     # by looking at some of the chanrts it tooks like even if the funding rate doesnt have a threshold, it may have a rate of change that could be concerning
     data = merge_rates_price(BTCpricedata, BTCdata)
     data['FR1day'] = (data['Funding Rate'].diff()) # diff between yesterday and today
-    data['FR5day'] = data['Funding Rate'].diff(periods=5) # diff b/w 5 days ago and today
-    data['FR5day%'] = data['FR5day'] / data['Funding Rate'] # % difference
+    data['FR1day%'] = data['FR1day'] / data['Funding Rate']  # % difference
+    data['FR3day'] = data['Funding Rate'].diff(periods=3) # diff b/w 5 days ago and today
+    data['FR3day%'] = data['FR3day'] / data['Funding Rate'] # % difference
     ## lets do the same for price to see if they are correlated
     data['Price1day'] = (data['high'].diff())  # diff between yesterday and today
-    data['Price5day'] = data['high'].diff(periods=5)  # diff b/w 5 days ago and today
-    data['Price5day%'] = data['Price5day'] / data['high']  # % difference
+    data['Price1day%'] = data['Price1day'] / data['high']  # % difference
+    data['Price3day'] = data['high'].diff(periods=3)  # diff b/w 5 days ago and today
+    data['Price3day%'] = data['Price3day'] / data['high']  # % difference
+    z = 2
 
 
 
     # check against tops and bottoms
-    marketmax, midmax, smallmax = BTCTopsandBottoms(BTCpricedata)
+    marketmax, midmax, smallmax, marketmin, midmin, smallmin = BTCTopsandBottoms(BTCpricedata)
 
     # new col: tops and bottoms
         # marketmax = 3, midmax = 2, smallmax = 1, then oppo for mins
@@ -236,18 +256,22 @@ def fr_change(BTCpricedata, BTCdata): # done
     min_max = data.loc[data['TB'].isin([1, 2, 3])]
 
     # bin price 5day%, fr5day%
-    data['FR_chg_bin'] = pd.qcut(data['FR5day%'], 5, precision=5, duplicates='drop', labels=False)
-    data['Price_chg_bin'] = pd.qcut(data['Price5day%'], 5, precision=5, duplicates='drop', labels=False)
+    data['FR3_chg_bin'] = pd.qcut(data['FR3day%'], 10, precision=2, duplicates='drop', labels=False)
+    data['Price3_chg_bin'] = pd.qcut(data['Price3day%'], 10, precision=2, duplicates='drop', labels=False)
+    data['FR1_chg_bin'] = pd.qcut(data['FR1day%'], 10, precision=2, duplicates='drop', labels=False)
+    data['Price1_chg_bin'] = pd.qcut(data['Price1day%'], 10, precision=2, duplicates='drop', labels=False)
 
     new_data = []
-    a = data.dropna().groupby(['TB', 'FR_chg_bin']).size() # group by TB and FR chg bin and see the overlaps
-    b = data.dropna().groupby(['TB', 'Price_chg_bin']).size() # group by price
-    c = data.dropna().groupby(['TB', 'Price_chg_bin', 'FR_chg_bin']).size() # all
+    a = data.dropna().groupby(['TB', 'FR3_chg_bin']).size() # group by TB and FR chg bin and see the overlaps
+    b = data.dropna().groupby(['TB', 'Price3_chg_bin']).size() # group by price
+    c = data.dropna().groupby(['TB', 'Price3_chg_bin', 'FR3_chg_bin']).size() # all
 
     for i in range(0, len(b)):
         idx = b.index.tolist()[i]
         new_data.append([idx[0], idx[1], b.iloc[i]])
+    z = 2
 
+fr_change(BTCpricedata, BTCdata)
 
 
 def peak_in_bin(BTCpricedata, BTCdata): # done
@@ -276,7 +300,7 @@ def fr_price_change(BTCpricedata, BTCdata): # done
 
 
     # check against tops and bottoms
-    marketmax, midmax, smallmax = BTCTopsandBottoms(BTCpricedata)
+    marketmax, midmax, smallmax, marketmin, midmin, smallmin = BTCTopsandBottoms(BTCpricedata)
 
     # new col: tops and bottoms
         # marketmax = 3, midmax = 2, smallmax = 1, then oppo for mins

@@ -32,8 +32,7 @@ def find_min(data_full, timeframe):
     return list
 
 
-def BTCTopsandBottoms(data):
-    BTC_price_data = data
+def BTCTopsandBottoms(BTC_price_data):
 
     marketTF = 500 # market cycles are relatively every 4 years
     midTF = 200
@@ -42,8 +41,8 @@ def BTCTopsandBottoms(data):
     marketmax = find_max(BTC_price_data, marketTF)
     midmax = find_max(BTC_price_data, midTF)
     smallmax = find_max(BTC_price_data, smallTF)
-    #marketmin = find_min(BTC_price_data, marketTF)
-    #midmin = find_min(BTC_price_data, midTF)
-    #smallmin = find_min(BTC_price_data, smallTF)
+    marketmin = find_min(BTC_price_data, marketTF)
+    midmin = find_min(BTC_price_data, midTF)
+    smallmin = find_min(BTC_price_data, smallTF)
 
-    return marketmax, midmax, smallmax #, marketmin, midmin, smallmin
+    return marketmax, midmax, smallmax, marketmin, midmin, smallmin
