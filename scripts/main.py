@@ -2,22 +2,22 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 from datetime import datetime, date
+import argparse
 
-from modules import get_data, tops_bottoms
+from modules import tops_bottoms
+from modules.data_master import BTCDataset
 from modules.tops_bottoms import BTCTopsandBottoms
 
 # this finds the market cycle tops and dates for larger time frames (500+ days),
 # medium time frames (200 days) and small time frames (50 days)
-BTCpricedata, _ = get_data.Price_data()
-BTCpricedata = BTCpricedata[1326:]
-#marketmax, midmax, smallmax, marketmin, midmin, smallmin = tops_bottoms.BTCTopsandBottoms(BTCpricedata)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("binance_data_path", help="Assuming you downloaded the binance data to csv, give the path on your computer")
 
 
-# bin funding rates, and then % drop/gain after
-#BTCdata, ETHdata = get_data.binance_data()
-BTCdata = get_data.FR_data()
-BTCdata = BTCdata[1327:]
-
+full_dataset = BTCDataset()
+BTCdata = full_dataset.fund_data
+BTCpricedata = full_dataset.price_data
 
 
 def fundingbins(BTCdata): # old
@@ -205,7 +205,6 @@ def likelihood_of_peak(BTCpricedata, BTCdata):
     for i in smallmax:
         count = len(i)
         mid_lh.append([smallmax[i][0], 1 / count])
-    z = 2
 
 def changes(BTCpricedata, BTCdata):
     # see relation between price, funding rate, and future prices
@@ -236,7 +235,6 @@ def fr_change(BTCpricedata, BTCdata): # done
     data['Price1day%'] = data['Price1day'] / data['high']  # % difference
     data['Price3day'] = data['high'].diff(periods=3)  # diff b/w 5 days ago and today
     data['Price3day%'] = data['Price3day'] / data['high']  # % difference
-    z = 2
 
 
 
@@ -269,7 +267,6 @@ def fr_change(BTCpricedata, BTCdata): # done
     for i in range(0, len(b)):
         idx = b.index.tolist()[i]
         new_data.append([idx[0], idx[1], b.iloc[i]])
-    z = 2
 
 fr_change(BTCpricedata, BTCdata)
 
@@ -321,6 +318,5 @@ def fr_price_change(BTCpricedata, BTCdata): # done
     a = data.dropna().groupby(['TB', 'FRbin']).size() # group by TB and FR chg bin and see the overlaps
     b = data.dropna().groupby(['TB', 'Price_chg_bin']).size() # group by price
     c = data.dropna().groupby(['TB', 'Price_chg_bin', 'FRbin']).size()
-    z = 2
 
 fr_price_change(BTCpricedata, BTCdata)

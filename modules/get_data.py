@@ -53,23 +53,16 @@ def bitmex_data(): #wanted to try and get the data w/o using APIs
         driver.close()
     pd.DataFrame(total_data).to_csv('data/BitmexBTC2.csv')
 
-def Bitmex2():
-    BTCdata = pd.read_csv('/Users/footb/Desktop/Misc/Finance/Crypto/CarterProject/data/BitmexBTC2.csv')
-    BTCdata['Date'] = pd.to_datetime(BTCdata['Time']).dt.date
-    BTCdata = BTCdata[['Date', 'Funding Rate']]
-    return BTCdata
-
-def binance_data():
-    BTCdata = pd.read_csv('/Users/footb/Desktop/Misc/Finance/Crypto/CarterProject/data/Funding Rate History_BTCUSDT Perpetual_2022-02-11.csv')
+def binance_data(csv_path):
+    # had to download to csv
+    BTCdata = pd.read_csv(csv_path)
     BTCdata['Date'] = pd.to_datetime(BTCdata['Time']).dt.date
     BTCdata['Time'] = pd.to_datetime(BTCdata['Time']).dt.time
     BTCdata['Funding Rate'] = (BTCdata['Funding Rate'].str.rstrip('%').astype('float') / 100.0)
-    #BTCdata['Funding Rate'] = float(BTCdata['Funding Rate'].apply(lambda x: '%.8f' % x))
     BTCdata = BTCdata[['Date', 'Time', 'Funding Interval', 'Funding Rate']]
     return BTCdata
 
-def FR_data():
-    bitmex = Bitmex2()
+def FR_data(bitmex, binance):
     binance = binance_data()
     binance = binance[['Date', 'Funding Rate']]
     bitmex = bitmex.groupby('Date').mean()
@@ -91,7 +84,6 @@ def FR_data():
     return data
 
 def Price_data():
-    fr = FR_data()
     BTC_pricedata = Historic_Crypto.HistoricalData('BTC-USD', 86400, '2016-05-14-00-00').retrieve_data()
     BTC_pricedata.index.name = 'Date'
     BTC_pricedata.reset_index(inplace=True)
